@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FINAL DEBUG - Responsive Countdown</title>
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { font-size: 16px; --bg-color: #f0f4f8; --item-bg-color: #ffffff; --text-color: #334e68; --label-color: #627d98; --shadow-color: rgba(149, 157, 165, 0.2); --circle-bg-stroke: #d8e2eb; --days-color: #00a896; --hours-color: #f77f00; --minutes-color: #d62828; --seconds-color: #5e548e; --item-min-width: 110px; --item-max-width: 160px; --circle-stroke-width: 8; --hover-scale: 1.04; --transition-speed: 0.25s; }
+        html { box-sizing: border-box; } *, *:before, *:after { box-sizing: inherit; }
+        body { display: flex; justify-content: center; align-items: center; background: var(--bg-color); font-family: 'Poppins', sans-serif; margin: 0; min-height: 100vh; padding: 1rem; color: var(--text-color); }
+        .countdown-container { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: clamp(1rem, 4vw, 2.5rem); width: 100%; max-width: 800px; padding: 1rem; }
+        .countdown-item { display: flex; flex-direction: column; align-items: center; background-color: var(--item-bg-color); padding: clamp(1rem, 3vw, 1.8rem); border-radius: 12px; box-shadow: 0 4px 10px var(--shadow-color); transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease; text-align: center; flex: 1 1 clamp(var(--item-min-width), 20vw, var(--item-max-width)); max-width: var(--item-max-width); }
+        .countdown-item:hover { transform: translateY(-5px) scale(var(--hover-scale)); box-shadow: 0 8px 20px var(--shadow-color); }
+        .countdown-circle { position: relative; width: 100%; max-width: 120px; aspect-ratio: 1 / 1; margin: 0 auto 1rem auto; }
+        .countdown-circle svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+        .countdown-circle circle { fill: none; stroke-width: var(--circle-stroke-width); stroke-linecap: round; cx: 60; cy: 60; r: 54; }
+        .countdown-circle circle.bg-circle { stroke: var(--circle-bg-stroke); }
+        .countdown-circle circle.progress-circle { transition: stroke-dashoffset 0.5s linear; }
+        #days-progress { stroke: var(--days-color); } #hours-progress { stroke: var(--hours-color); } #minutes-progress { stroke: var(--minutes-color); } #seconds-progress { stroke: var(--seconds-color); }
+        .countdown-time { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: clamp(1.5rem, 6vmin, 2.25rem); font-weight: 700; color: var(--text-color); line-height: 1; }
+        .countdown-label { font-size: clamp(0.7rem, 2.5vmin, 0.9rem); font-weight: 600; color: var(--label-color); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0; }
+        #error-message { color: red; font-weight: bold; text-align: center; width: 100%; margin-top: 20px; } /* Error message style */
+    </style>
+</head>
+<body>
+    <div class="countdown-container">
+        <!-- Items structure -->
+         <div class="countdown-item">
+            <div class="countdown-circle"><svg viewBox="0 0 120 120"><circle class="bg-circle" cx="60" cy="60" r="54"></circle><circle class="progress-circle" id="days-progress" cx="60" cy="60" r="54"></circle></svg><div class="countdown-time" id="days">--</div></div>
+            <div class="countdown-label">Days</div>
+        </div>
+        <div class="countdown-item">
+            <div class="countdown-circle"><svg viewBox="0 0 120 120"><circle class="bg-circle" cx="60" cy="60" r="54"></circle><circle class="progress-circle" id="hours-progress" cx="60" cy="60" r="54"></circle></svg><div class="countdown-time" id="hours">--</div></div>
+            <div class="countdown-label">Hours</div>
+        </div>
+        <div class="countdown-item">
+            <div class="countdown-circle"><svg viewBox="0 0 120 120"><circle class="bg-circle" cx="60" cy="60" r="54"></circle><circle class="progress-circle" id="minutes-progress" cx="60" cy="60" r="54"></circle></svg><div class="countdown-time" id="minutes">--</div></div>
+            <div class="countdown-label">Minutes</div>
+        </div>
+        <div class="countdown-item">
+            <div class="countdown-circle"><svg viewBox="0 0 120 120"><circle class="bg-circle" cx="60" cy="60" r="54"></circle><circle class="progress-circle" id="seconds-progress" cx="60" cy="60" r="54"></circle></svg><div class="countdown-time" id="seconds">--</div></div>
+            <div class="countdown-label">Seconds</div>
+        </div>
+         <!-- Error message placeholder -->
+         <div id="error-message"></div>
+    </div>
+
+    <script>
+        console.log("SCRIPT: --- Countdown Script Loaded ---");
+
+        // --- Configuration ---
+        const targetDateString = '2025-04-15T10:30:00'; // Feb 15th, 2025 @ 10:30:00 AM (Local Time)
+        let targetDate = null;
+        let scriptError = false; // Flag to track errors
+
+        // --- DOM Elements & Error Handling ---
+        const elements = {
+            days: document.getElementById('days'),
+            hours: document.getElementById('hours'),
+            minutes: document.getElementById('minutes'),
+            seconds: document.getElementById('seconds'),
+            daysProgress: document.getElementById('days-progress'),
+            hoursProgress: document.getElementById('hours-progress'),
+            minutesProgress: document.getElementById('minutes-progress'),
+            secondsProgress: document.getElementById('seconds-progress'),
+            errorMessage: document.getElementById('error-message')
+        };
+
+        // --- Check if all elements were found ---
+        for (const key in elements) {
+            if (!elements[key]) {
+                console.error(`SCRIPT ERROR: HTML Element with ID '${key}' not found!`);
+                scriptError = true;
+            }
+        }
+
+        // --- Calculation & Initialization Variables ---
+        let totalLength = 0;
+        let initialTotalDays = 1;
+        let countdownInterval = null; // Use null initially
+
+        // --- Display Error Function ---
+        function displayError(message) {
+            console.error("DISPLAY ERROR:", message);
+            if (elements.errorMessage) {
+                elements.errorMessage.textContent = message;
+            }
+            scriptError = true; // Set error flag
+            if(countdownInterval) {
+                 clearInterval(countdownInterval); // Stop interval on error
+                 console.log("SCRIPT: Interval stopped due to error.");
+            }
+        }
+
+        // --- Date Parsing and Validation ---
+        try {
+            targetDate = new Date(targetDateString).getTime();
+            console.log(`SCRIPT: Target Date String: ${targetDateString}`);
+            console.log(`SCRIPT: Parsed Target Timestamp: ${targetDate}`);
+            if (isNaN(targetDate)) {
+                throw new Error("Invalid Target Date format or value.");
+            }
+            const nowForCheck = new Date().getTime();
+            if (targetDate <= nowForCheck) {
+                 throw new Error(`Target date (${new Date(targetDate).toLocaleString()}) is in the past or now! Check targetDateString or system clock.`);
+            }
+             console.log(`SCRIPT: Target date is valid and in the future.`);
+
+        } catch (error) {
+            displayError(`Date Parsing Error: ${error.message}`);
+        }
+
+
+        // --- Initialization Function ---
+        function initializeCountdown() {
+            if (scriptError) {
+                 console.log("SCRIPT: Initialization skipped due to previous errors.");
+                 return; // Don't initialize if errors occurred
+            }
+            console.log("SCRIPT: Initializing Countdown...");
+
+            try {
+                 // Calculate Circumference
+                 if (elements.daysProgress && totalLength === 0) {
+                     totalLength = 2 * Math.PI * 54; // r = 54
+                     console.log(`SCRIPT INIT: Circle Circumference (totalLength): ${totalLength}`);
+                 } else if (!elements.daysProgress) {
+                     console.warn("SCRIPT INIT: Days progress circle not found for length calculation.");
+                 }
+
+                // Calculate Initial Duration
+                const initialNow = new Date().getTime();
+                const initialTotalMilliseconds = Math.max(0, targetDate - initialNow);
+                initialTotalDays = Math.max(1, Math.ceil(initialTotalMilliseconds / (1000 * 60 * 60 * 24)));
+                console.log(`SCRIPT INIT: Initial Total Days calculated: ${initialTotalDays}`);
+
+                // Setup SVG Circles
+                const progressCircles = [elements.daysProgress, elements.hoursProgress, elements.minutesProgress, elements.secondsProgress];
+                progressCircles.forEach((circle) => {
+                    if (circle) {
+                        circle.style.strokeDasharray = totalLength;
+                        circle.style.strokeDashoffset = totalLength; // Start empty
+                    }
+                });
+
+                console.log("SCRIPT INIT: Initialization complete. Performing first update.");
+                updateCountdown(); // Perform first update immediately
+
+            } catch (error) {
+                displayError(`Initialization Error: ${error.message}`);
+            }
+        }
+
+        // --- Update Function (Called every second) ---
+        function updateCountdown() {
+            if (scriptError) return; // Don't run if errors occurred
+
+            try {
+                const now = new Date().getTime();
+                const distance = targetDate - now;
+                // Log distance only once every 5 seconds to avoid flooding console
+                // if (now % 5000 < 1000) {
+                //    console.log(`SCRIPT UPDATE: Current Distance: ${distance}`);
+                // }
+
+
+                if (distance < 0) {
+                    console.log("SCRIPT UPDATE: Countdown finished!");
+                    clearInterval(countdownInterval);
+                    if(elements.days) elements.days.textContent = "00";
+                    if(elements.hours) elements.hours.textContent = "00";
+                    if(elements.minutes) elements.minutes.textContent = "00";
+                    if(elements.seconds) elements.seconds.textContent = "00";
+                    const progressCircles = [elements.daysProgress, elements.hoursProgress, elements.minutesProgress, elements.secondsProgress];
+                    progressCircles.forEach(circle => { if (circle) circle.style.strokeDashoffset = totalLength; });
+                    return; // Exit update loop
+                }
+
+                // Time Calculations
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                // !! THIS IS WHERE NUMBERS ARE UPDATED !!
+                if(elements.days) elements.days.textContent = String(days).padStart(2, '0');
+                if(elements.hours) elements.hours.textContent = String(hours).padStart(2, '0');
+                if(elements.minutes) elements.minutes.textContent = String(minutes).padStart(2, '0');
+                if(elements.seconds) elements.seconds.textContent = String(seconds).padStart(2, '0');
+                // console.log(`SCRIPT UPDATE: ${days}d ${hours}h ${minutes}m ${seconds}s`); // Uncomment for very detailed logging
+
+                 // Update Progress Circles
+                 if (totalLength > 0) { // Only update if circumference is calculated
+                    const daysFraction = initialTotalDays > 0 ? Math.max(0, days / initialTotalDays) : 0;
+                    const hoursFraction = hours / 24;
+                    const minutesFraction = minutes / 60;
+                    const secondsFraction = seconds / 60;
+
+                    const daysOffset = totalLength * (1 - daysFraction);
+                    const hoursOffset = totalLength * (1 - hoursFraction);
+                    const minutesOffset = totalLength * (1 - minutesFraction);
+                    const secondsOffset = totalLength * (1 - secondsFraction);
+
+                    if (elements.daysProgress) elements.daysProgress.style.setProperty('stroke-dashoffset', daysOffset);
+                    if (elements.hoursProgress) elements.hoursProgress.style.setProperty('stroke-dashoffset', hoursOffset);
+                    if (elements.minutesProgress) elements.minutesProgress.style.setProperty('stroke-dashoffset', minutesOffset);
+                    if (elements.secondsProgress) elements.secondsProgress.style.setProperty('stroke-dashoffset', secondsOffset);
+                 }
+
+            } catch (error) {
+                 displayError(`Update Error: ${error.message}`);
+            }
+        }
+
+        // --- Start the Countdown ---
+        // Use DOMContentLoaded to ensure HTML is ready
+        document.addEventListener('DOMContentLoaded', () => {
+             console.log("SCRIPT: DOM fully loaded.");
+
+             // Check system clock
+             const nowCheck = new Date();
+             console.log(`SCRIPT: Current System Time Check: ${nowCheck.toLocaleString()}`);
+             if(nowCheck.getFullYear() < 2023 || nowCheck.getFullYear() > 2030) {
+                 console.warn("SCRIPT WARNING: System clock year seems potentially incorrect. Verify your computer's date and time.");
+             }
+
+             initializeCountdown(); // Setup initial values and styles
+
+             // Start interval only if initialization was successful (no errors)
+             if (!scriptError) {
+                 if(countdownInterval) clearInterval(countdownInterval); // Clear just in case
+                 countdownInterval = setInterval(updateCountdown, 1000); // Call update every second
+                 console.log("SCRIPT: Countdown interval STARTED.");
+             } else {
+                  console.warn("SCRIPT: Countdown interval NOT started due to errors during setup.");
+             }
+        });
+
+         console.log("SCRIPT: --- End of script execution ---");
+
+    </script>
+</body>
+</html>
